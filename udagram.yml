@@ -1,18 +1,199 @@
 Description: CD12352 - Infrastructure as Code Project - Udagram
 
 Parameters:
-  # Add your parameters here
+  EnvironmentName:
+    Description: "An environment name that will be prefixed to the resources name and also the exports name"
+    Type: String
+  ManagedPolicies:
+    Description: "The AWS Managed Policy for the EC2 Instance Role"
+    Type: CommaDelimitedList
+  InstanceType:
+    Type: String
+    Description: "EC2 instance type. For the second project required 2vCPU and 4GiB of Memory, so t3.medium is the best fits for this spec."
+    AllowedValues:
+        - t2.micro
+        - t3.micro
+        - t3.medium
+  KeyPair:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::KeyPair::KeyName>
+    Description: "AWS key pair in us-east-1, stored in SSM Parameter Store"
+  ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: "AWS AMI in us-east-1, stored in SSM Parameter Store"
 
 Resources:
-  # Add your resources here
+  WebAppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Description: "The IAM role of second project that allow S3 read only and SSM Managed Instance Core"
+      ManagedPolicyArns: !Ref ManagedPolicies
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${EnvironmentName}-web-app-iam-role-${AWS::Region}
+
+  WebAppInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: "WebAppRole"
+
+# ----------------- EC2 ------------------
+#-----------------------------------------
+
   # We include a portion of the LaunchTemplate resource so you can use the UserData.
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties: 
       LaunchTemplateData:
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyPair
+        InstanceType: !Ref InstanceType
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sdk"
+            Ebs:
+              VolumeSize: "10"
+        SecurityGroupIds:
+          - Fn::ImportValue:
+              !Sub ${EnvironmentName}-app-security-group-id-${AWS::Region}
         UserData:
           Fn::Base64: |
             #!/bin/bash
             apt-get update -y
             sudo apt-get install nginx -y
             service nginx start
+      LaunchTemplateName: !Sub ${EnvironmentName}-web-app-launch-template-${AWS::Region}
+
+# ------------ Resource groups -----------
+#-----------------------------------------
+
+  # Target group for an Application Load Balancer or Network Load Balancer.
+  WebAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${EnvironmentName}-vpc-id-${AWS::Region}
+      TargetType: "instance"
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${EnvironmentName}-target-group-${AWS::Region}
+
+  # Auto Scaling group
+  WebAppGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub ${EnvironmentName}-private-subnet-ids-${AWS::Region}
+      CapacityRebalance: true
+      HealthCheckType: "ELB"
+      LaunchTemplate:
+        LaunchTemplateId:
+          Ref: "WebAppLaunchTemplate"
+        Version:
+          Fn::GetAtt: "WebAppLaunchTemplate.LatestVersionNumber"
+      MinSize: '4'
+      MaxSize: '6'
+      TargetGroupARNs:
+        - Ref: "WebApprTargetGroup"
+      Tags:
+        - Key: "Name"
+          PropagateAtLaunch: false
+          Value: !Sub ${EnvironmentName}-auto-scaling-${AWS::Region}
+
+
+# ------------ Load balancer ---------------
+#-------------------------------------------
+
+  # Application Load Balancer
+  WebAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: "application"
+      IpAddressType: "ipv4"
+      Subnets:
+        - Fn::ImportValue:
+            !Sub ${EnvironmentName}-public-subnet-1-id-${AWS::Region}
+        - Fn::ImportValue:
+            !Sub ${EnvironmentName}-public-subnet-2-id-${AWS::Region}
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub ${EnvironmentName}-lb-security-group-id-${AWS::Region}
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${EnvironmentName}-load-balancer-${AWS::Region}
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: "WebAppTargetGroup"
+      LoadBalancerArn:
+        Ref: "WebAppLoadBalancer"
+      Port: "80"
+      Protocol: HTTP
+
+  LoadBalancerListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: "WebAppTargetGroup"
+      Conditions:
+        - Field: path-pattern
+          Values: [ / ]
+      ListenerArn:
+        Ref: "LoadBalancerListener"
+      Priority: 1
+
+Outputs:
+  WebAppLoadBalancerURL:
+    Description: "Load balancer URL within the http:// in front"
+    Value:
+      Fn::Sub:
+        - "http://${load_balancer_dns_name}"
+        - load_balancer_dns_name:
+            Fn::GetAtt: "WebAppLoadBalancer.DNSName"
+    Export:
+      Name: !Sub ${EnvironmentName}-load-balancer-dns-name-${AWS::Region}
+
+  WebAppInstanceProfile:
+    Description: "The Instance profile that allow S3 read only and SSM Managed Instance Core"
+    Value:
+      Ref: "WebAppInstanceProfile"
+    Export: !Sub ${EnvironmentName}-web-app-instance-profile-${AWS::Region}
+
+  WebAppSecurityGroupId:
+    Description: "The web app security group id"
+    Value:
+      Ref: "WebAppSecurityGroup"
+    Export:
+      Name: !Sub ${EnvironmentName}-web-app-sg-${AWS::Region}
+
+  LoadBalancerSecurityGroupId:
+    Description: "The load balancer security group id"
+    Value:
+      Ref: "LoadBalancerSecurityGroup"
+    Export:
+      Name: !Sub ${EnvironmentName}-load-balancer-sg-${AWS::Region}
