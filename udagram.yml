@@ -21,6 +21,18 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Description: "AWS AMI in us-east-1, stored in SSM Parameter Store"
 
+  S3BucketAppName:
+    Description: A Bucked app name.
+    Type: String
+
+  S3BucketKeyName:
+    Description: A Bucked key name.
+    Type: String
+
+  S3BucketLogsName:
+    Description: A Bucked log name.
+    Type: String
+
 Resources:
   WebAppRole:
     Type: AWS::IAM::Role
@@ -167,6 +179,105 @@ Resources:
         Ref: "LoadBalancerListener"
       Priority: 1
 
+# -------------- S3 Bucket -----------------
+#-------------------------------------------
+
+S3WebApp:
+  Type: AWS::S3::Bucket
+  Properties:
+    PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+    OwnershipControls:
+      Rules:
+        - ObjectOwnership: ObjectWriter
+    BucketName: !Ref S3BucketAppName
+    WebsiteConfiguration:
+      IndexDocument: index.html
+      ErrorDocument: error.html
+  DeletionPolicy: Retain
+
+S3WebAppPolicy:
+  Type: AWS::S3::BucketPolicy
+  Properties:
+    Bucket: !Ref S3WebApp
+    PolicyDocument:
+      Version: 2012-10-17
+      Statement:
+        - Action:
+          - 's3:GetObject'
+          Effect: Allow
+          Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3WebApp', '/*']]
+          Principal: '*'
+
+  S3KeyPar:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      BucketName: !Ref S3BucketKeyName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Retain
+
+  S3KeyParPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3KeyPar
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowStaticObjectDownload
+            Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3KeyPar', '/*']]
+            Principal: '*'
+
+          - Sid: PutObjectAccess
+            Action:
+            - 's3:PutObject'
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3KeyPar', '/*']]
+            Principal: '*'
+
+  S3Logs:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      BucketName: !Ref S3BucketLogsName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Retain
+
+  S3LogsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Logs
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowStaticObjectDownload
+            Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3Logs', '/*']]
+            Principal: '*'
+
+          - Sid: PutObjectAccess
+            Action:
+            - 's3:PutObject'
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3Logs', '/*']]
+            Principal: '*'
 Outputs:
   WebAppLoadBalancerURL:
     Description: "Load balancer URL within the http:// in front"

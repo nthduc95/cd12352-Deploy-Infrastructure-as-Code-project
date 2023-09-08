@@ -18,5 +18,17 @@
 	{
 		"ParameterKey": "ImageId",
 		"ParameterValue": "ubuntu-18-lts"
+	},
+	{
+		"ParameterKey": "S3BucketAppName",
+		"ParameterValue": "udagram-app-ducnt44"
+	},
+	{
+		"ParameterKey": "S3BucketKeyName",
+		"ParameterValue": "udagram-key-ducnt44"
+	},
+	{
+		"ParameterKey": "S3BucketLogsName",
+		"ParameterValue": "udagram-logs-ducnt44"
 	}
 ]
