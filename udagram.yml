@@ -15,10 +15,10 @@ Parameters:
         - t3.micro
         - t3.medium
   KeyPair:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::KeyPair::KeyName>
+    Type: String
     Description: "AWS key pair in us-east-1, stored in SSM Parameter Store"
   ImageId:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Type: String
     Description: "AWS AMI in us-east-1, stored in SSM Parameter Store"
 
   S3BucketAppName:
@@ -125,7 +125,7 @@ Resources:
       MinSize: '4'
       MaxSize: '6'
       TargetGroupARNs:
-        - Ref: "WebApprTargetGroup"
+        - Ref: "WebAppTargetGroup"
       Tags:
         - Key: "Name"
           PropagateAtLaunch: false
@@ -182,32 +182,32 @@ Resources:
 # -------------- S3 Bucket -----------------
 #-------------------------------------------
 
-S3WebApp:
-  Type: AWS::S3::Bucket
-  Properties:
-    PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-    OwnershipControls:
-      Rules:
-        - ObjectOwnership: ObjectWriter
-    BucketName: !Ref S3BucketAppName
-    WebsiteConfiguration:
-      IndexDocument: index.html
-      ErrorDocument: error.html
-  DeletionPolicy: Retain
+  S3WebApp:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      BucketName: !Ref S3BucketAppName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+    DeletionPolicy: Retain
 
-S3WebAppPolicy:
-  Type: AWS::S3::BucketPolicy
-  Properties:
-    Bucket: !Ref S3WebApp
-    PolicyDocument:
-      Version: 2012-10-17
-      Statement:
-        - Action:
-          - 's3:GetObject'
-          Effect: Allow
-          Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3WebApp', '/*']]
-          Principal: '*'
+  S3WebAppPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3WebApp
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join ['', ['arn:aws:s3:::', !Ref 'S3WebApp', '/*']]
+            Principal: '*'
 
   S3KeyPar:
     Type: AWS::S3::Bucket
@@ -293,18 +293,5 @@ Outputs:
     Description: "The Instance profile that allow S3 read only and SSM Managed Instance Core"
     Value:
       Ref: "WebAppInstanceProfile"
-    Export: !Sub ${EnvironmentName}-web-app-instance-profile-${AWS::Region}
-
-  WebAppSecurityGroupId:
-    Description: "The web app security group id"
-    Value:
-      Ref: "WebAppSecurityGroup"
-    Export:
-      Name: !Sub ${EnvironmentName}-web-app-sg-${AWS::Region}
-
-  LoadBalancerSecurityGroupId:
-    Description: "The load balancer security group id"
-    Value:
-      Ref: "LoadBalancerSecurityGroup"
-    Export:
-      Name: !Sub ${EnvironmentName}-load-balancer-sg-${AWS::Region}
+    Export: 
+      Name: !Sub ${EnvironmentName}-web-app-instance-profile-${AWS::Region}

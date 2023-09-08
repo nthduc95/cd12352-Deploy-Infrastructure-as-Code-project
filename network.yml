@@ -44,7 +44,7 @@ Resources:
   # Gateway for connecting VPC to internet
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    Propertise:
+    Properties:
       Tags:
         - Key: Name
           Value: !Join [ "-internet-gateway-", [ !Ref EnvironmentName, !Ref AWS::Region ]]
@@ -78,11 +78,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-public-subnet-"
-              - Fn::Select:
-                - 0
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-public-subnet-"
+                - Fn::Select:
+                  - 0
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
   # Private sub network
   PrivateSubnet1:
@@ -101,11 +101,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-private-subnet-"
-              - Fn::Select:
-                - 0
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-private-subnet-"
+                - Fn::Select:
+                  - 0
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
   
   # Elastic IP
   NatGateway1EIP:
@@ -119,11 +119,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-nat-eip-"
-              - Fn::Select:
-                - 0
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-nat-eip-"
+                - Fn::Select:
+                  - 0
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
   # NAT gateway
   NatGateway1:
@@ -137,11 +137,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-nat-gateway-"
-              - Fn::Select:
-                - 0
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-nat-gateway-"
+                - Fn::Select:
+                  - 0
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
 # ------------ Availability Zone 2 -------------------
 # ----------------------------------------------------
@@ -163,11 +163,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-public-subnet-"
-              - Fn::Select:
-                - 1
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-public-subnet-"
+                - Fn::Select:
+                  - 1
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
   # Private sub network
   PrivateSubnet2:
@@ -186,11 +186,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-private-subnet-"
-              - Fn::Select:
-                - 1
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-private-subnet-"
+                - Fn::Select:
+                  - 1
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
   
   # Elastic IP
   NatGateway2EIP:
@@ -204,11 +204,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-nat-eip-"
-              - Fn::Select:
-                - 1
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-nat-eip-"
+                - Fn::Select:
+                  - 1
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
   # NAT gateway
   NatGateway2:
@@ -222,11 +222,11 @@ Resources:
             Fn::Join:
               - ""
               - - !Ref EnvironmentName
-              - "-nat-gateway-"
-              - Fn::Select:
-                - 1
-                - Fn::GetAZs:
-                    Ref: "AWS::Region"
+                - "-nat-gateway-"
+                - Fn::Select:
+                  - 1
+                  - Fn::GetAZs:
+                      Ref: "AWS::Region"
 
 # ---------- Routing for public routes ---------
 # ----------------------------------------------
@@ -263,39 +263,39 @@ Resources:
                   - Fn::GetAZs:
                       Ref: "AWS::Region"
 
-    PublicOutboundRouteTable1:
-        Type: AWS::EC2::Route
-        Properties:
-            RouteTableId:
-                Ref: "PublicRouteTable1"
-            DestinationCidrBlock: 0.0.0.0/0
-            GatewayId:
-                Ref: "InternetGateway"
+  PublicOutboundRouteTable1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: "PublicRouteTable1"
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: "InternetGateway"
 
-    PublicOutboundRouteTable2:
-        Type: AWS::EC2::Route
-        Properties:
-            RouteTableId:
-                Ref: "PublicRouteTable2"
-            DestinationCidrBlock: 0.0.0.0/0
-            GatewayId:
-                Ref: "InternetGateway"
+  PublicOutboundRouteTable2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: "PublicRouteTable2"
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: "InternetGateway"
 
-    AssociationPublicSubnet1:
-        Type: AWS::EC2::SubnetRouteTableAssociation
-        Properties:
-            RouteTableId:
-                Ref: "PublicRouteTable1"
-            SubnetId:
-                Ref: "PublicSubnet1"
+  AssociationPublicSubnet1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: "PublicRouteTable1"
+      SubnetId:
+        Ref: "PublicSubnet1"
 
-    AssociationPublicSubnet2:
-        Type: AWS::EC2::SubnetRouteTableAssociation
-        Properties:
-            RouteTableId:
-                Ref: "PublicRouteTable2"
-            SubnetId:
-                Ref: "PublicSubnet2"
+  AssociationPublicSubnet2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: "PublicRouteTable2"
+      SubnetId:
+        Ref: "PublicSubnet2"
 
 # ---------- Routing for private routes ---------
 # -----------------------------------------------

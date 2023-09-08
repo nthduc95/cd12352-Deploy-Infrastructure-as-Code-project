@@ -17,7 +17,7 @@
 	},
 	{
 		"ParameterKey": "ImageId",
-		"ParameterValue": "ubuntu-18-lts"
+		"ParameterValue": "ami-01c647eace872fc02"
 	},
 	{
 		"ParameterKey": "S3BucketAppName",
